@@ -209,7 +209,32 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
             </div>
 
             <Card glass className="p-6 md:p-10 mb-8 border-primary/20 shadow-2xl shadow-primary/5">
-                <h2 className="text-2xl md:text-3xl font-bold mb-8 leading-relaxed">{question.text}</h2>
+                <div className="text-2xl md:text-3xl font-bold mb-8 leading-relaxed">
+                    {(() => {
+                        const parts = question.text.split('```');
+                        return parts.map((part, index) => {
+                            if (index % 2 === 1) {
+                                // Code block
+                                return (
+                                    <pre key={index} className="bg-black/50 p-4 rounded-lg my-4 overflow-x-auto whitespace-pre-wrap break-words text-sm font-mono border border-white/10 shadow-inner">
+                                        <code>{part.trim()}</code>
+                                    </pre>
+                                );
+                            }
+                            // Normal text (handle inline code)
+                            return part.split('`').map((subPart, subIndex) => {
+                                if (subIndex % 2 === 1) {
+                                    return (
+                                        <code key={`${index}-${subIndex}`} className="bg-black/30 px-1.5 py-0.5 rounded font-mono text-sm text-primary/80 border border-white/5">
+                                            {subPart}
+                                        </code>
+                                    );
+                                }
+                                return <span key={`${index}-${subIndex}`}>{subPart}</span>;
+                            });
+                        });
+                    })()}
+                </div>
 
                 <div className="space-y-4">
                     {question.options.map((option, idx) => {
