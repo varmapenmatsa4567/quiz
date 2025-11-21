@@ -118,7 +118,8 @@ export function useGameSession(sessionId) {
         // Update player score
         await updateDoc(doc(db, "sessions", sessionId), {
             [`players.${user.uid}.score`]: increment(points),
-            [`players.${user.uid}.lastAnswerIndex`]: questionIndex
+            [`players.${user.uid}.lastAnswerIndex`]: questionIndex,
+            [`players.${user.uid}.correctAnswers`]: increment(isCorrect ? 1 : 0)
         });
     };
 

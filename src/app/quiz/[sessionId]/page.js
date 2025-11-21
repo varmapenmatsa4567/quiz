@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { clsx } from "clsx";
+import confetti from "canvas-confetti";
 
 export default function QuizPage() {
     const { sessionId } = useParams();
@@ -118,7 +119,10 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
     const [timeLeft, setTimeLeft] = useState(30);
     const [selectedOption, setSelectedOption] = useState(null);
     const [isAnswered, setIsAnswered] = useState(false);
+    const [shake, setShake] = useState(false);
     const isHost = session.hostId === user?.uid;
+
+    const leader = Object.values(session.players).sort((a, b) => b.score - a.score)[0];
 
     // Timer Logic
     useEffect(() => {
@@ -186,6 +190,18 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
         setSelectedOption(index);
         setIsAnswered(true);
         const isCorrect = option === question.answer;
+
+        if (isCorrect) {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        } else {
+            setShake(true);
+            setTimeout(() => setShake(false), 500);
+        }
+
         submitAnswer(session.currentQuestionIndex, option, isCorrect);
     };
 
@@ -197,9 +213,21 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
             className="max-w-3xl mx-auto p-4 md:p-8 pt-12 min-h-screen flex flex-col"
         >
             <div className="flex justify-between items-center mb-8">
-                <span className="text-gray-400 font-medium bg-white/5 px-4 py-2 rounded-full">
-                    Question {session.currentQuestionIndex + 1} / {quiz.questions.length}
-                </span>
+                <div className="flex flex-col">
+                    <span className="text-gray-400 font-medium bg-white/5 px-4 py-2 rounded-full mb-2 self-start">
+                        Question {session.currentQuestionIndex + 1} / {quiz.questions.length}
+                    </span>
+                    {leader && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-2 text-sm font-bold text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full self-start border border-yellow-500/20"
+                        >
+                            <span>👑</span>
+                            <span>Leading: {leader.name}</span>
+                        </motion.div>
+                    )}
+                </div>
                 <div className={clsx(
                     "text-2xl font-bold font-mono px-4 py-2 rounded-full border",
                     timeLeft < 10 ? "text-red-500 border-red-500/50 bg-red-500/10" : "text-primary border-primary/50 bg-primary/10"
@@ -208,69 +236,80 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
                 </div>
             </div>
 
-            <Card glass className="p-6 md:p-10 mb-8 border-primary/20 shadow-2xl shadow-primary/5">
-                <div className="text-2xl md:text-3xl font-bold mb-8 leading-relaxed">
-                    {(() => {
-                        const parts = question.text.split('```');
-                        return parts.map((part, index) => {
-                            if (index % 2 === 1) {
-                                // Code block
-                                return (
-                                    <pre key={index} className="bg-black/50 p-4 rounded-lg my-4 overflow-x-auto whitespace-pre break-words md:text-sm text-xs font-mono border border-white/10 shadow-inner">
-                                        <code>{part.trim()}</code>
-                                    </pre>
-                                );
-                            }
-                            // Normal text (handle inline code)
-                            return part.split('`').map((subPart, subIndex) => {
-                                if (subIndex % 2 === 1) {
+            <Card
+                glass
+                className={clsx(
+                    "p-6 md:p-10 mb-8 border-primary/20 shadow-2xl shadow-primary/5 transition-transform",
+                    shake && "animate-shake" // We'll use framer motion instead for smoother control
+                )}
+            >
+                <motion.div
+                    animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
+                    transition={{ duration: 0.4 }}
+                >
+                    <div className="text-2xl md:text-3xl font-bold mb-8 leading-relaxed">
+                        {(() => {
+                            const parts = question.text.split('```');
+                            return parts.map((part, index) => {
+                                if (index % 2 === 1) {
+                                    // Code block
                                     return (
-                                        <code key={`${index}-${subIndex}`} className="bg-black/30 px-1.5 py-0.5 rounded font-mono text-sm text-primary/80 border border-white/5">
-                                            {subPart}
-                                        </code>
+                                        <pre key={index} className="bg-black/50 p-4 rounded-lg my-4 overflow-x-auto whitespace-pre break-words md:text-sm text-xs font-mono border border-white/10 shadow-inner">
+                                            <code>{part.trim()}</code>
+                                        </pre>
                                     );
                                 }
-                                return <span key={`${index}-${subIndex}`}>{subPart}</span>;
+                                // Normal text (handle inline code)
+                                return part.split('`').map((subPart, subIndex) => {
+                                    if (subIndex % 2 === 1) {
+                                        return (
+                                            <code key={`${index}-${subIndex}`} className="bg-black/30 px-1.5 py-0.5 rounded font-mono text-sm text-primary/80 border border-white/5">
+                                                {subPart}
+                                            </code>
+                                        );
+                                    }
+                                    return <span key={`${index}-${subIndex}`}>{subPart}</span>;
+                                });
                             });
-                        });
-                    })()}
-                </div>
+                        })()}
+                    </div>
 
-                <div className="space-y-4">
-                    {question.options.map((option, idx) => {
-                        const isSelected = selectedOption === idx;
-                        const isCorrect = option === question.answer;
-                        const showResult = isAnswered;
+                    <div className="space-y-4">
+                        {question.options.map((option, idx) => {
+                            const isSelected = selectedOption === idx;
+                            const isCorrect = option === question.answer;
+                            const showResult = isAnswered;
 
-                        let btnClass = "w-full text-left p-6 rounded-xl border-2 transition-all font-medium text-lg relative overflow-hidden ";
+                            let btnClass = "w-full text-left p-6 rounded-xl border-2 transition-all font-medium text-lg relative overflow-hidden ";
 
-                        if (showResult) {
-                            if (isSelected) {
-                                btnClass += isCorrect
-                                    ? "bg-green-500/20 border-green-500 text-green-400"
-                                    : "bg-red-500/20 border-red-500 text-red-400";
-                            } else if (isCorrect) {
-                                btnClass += "bg-green-500/20 border-green-500 text-green-400";
+                            if (showResult) {
+                                if (isSelected) {
+                                    btnClass += isCorrect
+                                        ? "bg-green-500/20 border-green-500 text-green-400"
+                                        : "bg-red-500/20 border-red-500 text-red-400";
+                                } else if (isCorrect) {
+                                    btnClass += "bg-green-500/20 border-green-500 text-green-400";
+                                } else {
+                                    btnClass += "bg-white/5 border-white/5 opacity-50";
+                                }
                             } else {
-                                btnClass += "bg-white/5 border-white/5 opacity-50";
+                                btnClass += "bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.99]";
                             }
-                        } else {
-                            btnClass += "bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.99]";
-                        }
 
-                        return (
-                            <button
-                                key={idx}
-                                disabled={isAnswered || timeLeft === 0}
-                                onClick={() => handleAnswer(option, idx)}
-                                className={btnClass}
-                            >
-                                <span className="mr-4 opacity-50 font-mono">{String.fromCharCode(65 + idx)}.</span>
-                                {option}
-                            </button>
-                        );
-                    })}
-                </div>
+                            return (
+                                <button
+                                    key={idx}
+                                    disabled={isAnswered || timeLeft === 0}
+                                    onClick={() => handleAnswer(option, idx)}
+                                    className={btnClass}
+                                >
+                                    <span className="mr-4 opacity-50 font-mono">{String.fromCharCode(65 + idx)}.</span>
+                                    {option}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </motion.div>
             </Card>
         </motion.div>
     );
@@ -313,8 +352,11 @@ function ResultsView({ session, quiz, user }) {
                                 {idx === 0 && <div className="text-xs text-yellow-500 font-bold">🏆 Winner</div>}
                             </div>
                         </div>
-                        <div className="text-2xl font-bold text-primary">
-                            {player.score} <span className="text-sm text-gray-500 font-normal">pts</span>
+                        <div className="text-2xl font-bold text-primary text-right">
+                            <div>{player.score} <span className="text-sm text-gray-500 font-normal">pts</span></div>
+                            <div className="text-xs text-gray-400 font-normal mt-1">
+                                {player.correctAnswers || 0}/{quiz.questions.length} correct
+                            </div>
                         </div>
                     </div>
                 ))}
