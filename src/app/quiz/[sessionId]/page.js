@@ -10,12 +10,24 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { clsx } from "clsx";
 import confetti from "canvas-confetti";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 export default function QuizPage() {
     const { sessionId } = useParams();
     const { session, quiz, loading, error, startGame, submitAnswer, nextQuestion, user } = useGameSession(sessionId);
     const { login } = useAuth();
     const router = useRouter();
+    const { playCorrect, playWrong, playTick, playVictory, toggleBackgroundMusic, toggleMute, isMuted } = useSoundEffects();
+
+    // Manage Background Music based on session status
+    useEffect(() => {
+        if (session?.status === "waiting") {
+            toggleBackgroundMusic(true);
+        } else {
+            toggleBackgroundMusic(false);
+        }
+        return () => toggleBackgroundMusic(false);
+    }, [session?.status]);
 
     if (loading) return <div className="min-h-screen flex items-center justify-center text-white">Loading Session...</div>;
     if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
@@ -37,16 +49,39 @@ export default function QuizPage() {
     if (!session || !quiz) return <div className="min-h-screen flex items-center justify-center text-white">Initializing...</div>;
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans overflow-hidden">
+        <div className="min-h-screen bg-background text-foreground font-sans overflow-hidden relative">
+            {/* Mute Button */}
+            <button
+                onClick={toggleMute}
+                className="absolute top-4 right-4 z-50 p-3 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/10 transition-all"
+                title={isMuted ? "Unmute" : "Mute"}
+            >
+                {isMuted ? "🔇" : "🔊"}
+            </button>
+
             <AnimatePresence mode="wait">
                 {session.status === "waiting" && (
                     <LobbyView key="lobby" session={session} quiz={quiz} startGame={startGame} user={user} />
                 )}
                 {session.status === "active" && (
-                    <GameView key="game" session={session} quiz={quiz} submitAnswer={submitAnswer} nextQuestion={nextQuestion} user={user} />
+                    <GameView
+                        key="game"
+                        session={session}
+                        quiz={quiz}
+                        submitAnswer={submitAnswer}
+                        nextQuestion={nextQuestion}
+                        user={user}
+                        sounds={{ playCorrect, playWrong, playTick }}
+                    />
                 )}
                 {session.status === "completed" && (
-                    <ResultsView key="results" session={session} quiz={quiz} user={user} />
+                    <ResultsView
+                        key="results"
+                        session={session}
+                        quiz={quiz}
+                        user={user}
+                        playVictory={playVictory}
+                    />
                 )}
             </AnimatePresence>
         </div>
@@ -114,13 +149,14 @@ function LobbyView({ session, quiz, startGame, user }) {
     );
 }
 
-function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
+function GameView({ session, quiz, submitAnswer, nextQuestion, user, sounds }) {
     const question = quiz.questions[session.currentQuestionIndex];
     const [timeLeft, setTimeLeft] = useState(30);
     const [selectedOption, setSelectedOption] = useState(null);
     const [isAnswered, setIsAnswered] = useState(false);
     const [shake, setShake] = useState(false);
     const isHost = session.hostId === user?.uid;
+    const { playCorrect, playWrong, playTick } = sounds;
 
     const leader = Object.values(session.players).sort((a, b) => b.score - a.score)[0];
 
@@ -138,6 +174,11 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
             const elapsed = Math.floor((now - startTime) / 1000);
             const remaining = Math.max(30 - elapsed, 0);
             setTimeLeft(remaining);
+
+            if (remaining <= 5 && remaining > 0) {
+                playTick();
+            }
+
             return remaining;
         };
 
@@ -192,12 +233,14 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
         const isCorrect = option === question.answer;
 
         if (isCorrect) {
+            playCorrect();
             confetti({
                 particleCount: 100,
                 spread: 70,
                 origin: { y: 0.6 }
             });
         } else {
+            playWrong();
             setShake(true);
             setTimeout(() => setShake(false), 500);
         }
@@ -248,30 +291,7 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
                     transition={{ duration: 0.4 }}
                 >
                     <div className="text-2xl md:text-3xl font-bold mb-8 leading-relaxed">
-                        {(() => {
-                            const parts = question.text.split('```');
-                            return parts.map((part, index) => {
-                                if (index % 2 === 1) {
-                                    // Code block
-                                    return (
-                                        <pre key={index} className="bg-black/50 p-4 rounded-lg my-4 overflow-x-auto whitespace-pre break-words md:text-sm text-xs font-mono border border-white/10 shadow-inner">
-                                            <code>{part.trim()}</code>
-                                        </pre>
-                                    );
-                                }
-                                // Normal text (handle inline code)
-                                return part.split('`').map((subPart, subIndex) => {
-                                    if (subIndex % 2 === 1) {
-                                        return (
-                                            <code key={`${index}-${subIndex}`} className="bg-black/30 px-1.5 py-0.5 rounded font-mono text-sm text-primary/80 border border-white/5">
-                                                {subPart}
-                                            </code>
-                                        );
-                                    }
-                                    return <span key={`${index}-${subIndex}`}>{subPart}</span>;
-                                });
-                            });
-                        })()}
+                        <QuestionRenderer text={question.text} />
                     </div>
 
                     <div className="space-y-4">
@@ -315,8 +335,12 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
     );
 }
 
-function ResultsView({ session, quiz, user }) {
+function ResultsView({ session, quiz, user, playVictory }) {
     const players = Object.values(session.players).sort((a, b) => b.score - a.score);
+
+    useEffect(() => {
+        playVictory();
+    }, []);
 
     return (
         <motion.div
@@ -362,12 +386,137 @@ function ResultsView({ session, quiz, user }) {
                 ))}
             </Card>
 
+            <div className="mb-12">
+                <h2 className="text-2xl font-bold mb-6">Review Answers</h2>
+                <div className="space-y-4 text-left">
+                    {quiz.questions.map((q, idx) => {
+                        const playerStats = session.players[user?.uid];
+                        const userAnswer = playerStats?.answers?.[idx];
+
+                        return (
+                            <ReviewItem key={idx} question={q} index={idx} userAnswer={userAnswer} />
+                        );
+                    })}
+                </div>
+            </div>
+
             <Link href="/" className="inline-block">
                 <Button variant="secondary" size="lg" className="shadow-xl shadow-secondary/20">
                     Back to Home
                 </Button>
             </Link>
         </motion.div>
+    );
+}
+
+function QuestionRenderer({ text }) {
+    const parts = text.split('```');
+    return parts.map((part, index) => {
+        if (index % 2 === 1) {
+            // Code block
+            return (
+                <pre key={index} className="bg-black/50 p-4 rounded-lg my-4 overflow-x-auto whitespace-pre break-words md:text-sm text-xs font-mono border border-white/10 shadow-inner">
+                    <code>{part.trim()}</code>
+                </pre>
+            );
+        }
+        // Normal text (handle inline code)
+        return part.split('`').map((subPart, subIndex) => {
+            if (subIndex % 2 === 1) {
+                return (
+                    <code key={`${index}-${subIndex}`} className="bg-black/30 px-1.5 py-0.5 rounded font-mono text-sm text-primary/80 border border-white/5">
+                        {subPart}
+                    </code>
+                );
+            }
+            return <span key={`${index}-${subIndex}`}>{subPart}</span>;
+        });
+    });
+}
+
+function ReviewItem({ question, index, userAnswer }) {
+    const [explanation, setExplanation] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleExplain = async () => {
+        if (explanation) return;
+        setLoading(true);
+        try {
+            const res = await fetch("/api/explain-answer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    question: question.text,
+                    correctAnswer: question.answer,
+                    userAnswer: userAnswer
+                })
+            });
+            const data = await res.json();
+            setExplanation(data.explanation);
+        } catch (error) {
+            console.error("Failed to get explanation", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const isCorrect = userAnswer === question.answer;
+
+    return (
+        <Card glass className="p-6 border-white/5">
+            <div className="flex justify-between items-start gap-4 mb-4">
+                <div className="w-full">
+                    <span className="text-xs font-mono text-gray-500 mb-1 block">Question {index + 1}</span>
+                    <div className="font-medium text-lg mb-4">
+                        <QuestionRenderer text={question.text} />
+                    </div>
+                </div>
+                <Button
+                    onClick={handleExplain}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                    className="shrink-0"
+                >
+                    {loading ? "Thinking..." : "✨ Explain with AI"}
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className={clsx(
+                    "p-3 rounded-lg border",
+                    isCorrect ? "bg-green-500/10 border-green-500/20" : "bg-red-500/10 border-red-500/20"
+                )}>
+                    <span className={clsx(
+                        "text-xs font-bold uppercase tracking-wider",
+                        isCorrect ? "text-green-500" : "text-red-500"
+                    )}>Your Answer</span>
+                    <p className={clsx(
+                        "font-medium",
+                        isCorrect ? "text-green-400" : "text-red-400"
+                    )}>{userAnswer || "No Answer"}</p>
+                </div>
+
+                <div className="bg-green-500/10 border border-green-500/20 p-3 rounded-lg">
+                    <span className="text-xs text-green-500 font-bold uppercase tracking-wider">Correct Answer</span>
+                    <p className="text-green-400 font-medium">{question.answer}</p>
+                </div>
+            </div>
+
+            {explanation && (
+                <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="bg-primary/10 border border-primary/20 p-4 rounded-lg"
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">🤖</span>
+                        <span className="font-bold text-primary text-sm">Gemini Explanation</span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-gray-300">{explanation}</p>
+                </motion.div>
+            )}
+        </Card>
     );
 }
 

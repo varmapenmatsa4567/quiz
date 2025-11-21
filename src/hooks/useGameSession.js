@@ -116,10 +116,13 @@ export function useGameSession(sessionId) {
         }
 
         // Update player score
+        const currentAnswers = session.players[user.uid].answers || {};
+
         await updateDoc(doc(db, "sessions", sessionId), {
             [`players.${user.uid}.score`]: increment(points),
             [`players.${user.uid}.lastAnswerIndex`]: questionIndex,
-            [`players.${user.uid}.correctAnswers`]: increment(isCorrect ? 1 : 0)
+            [`players.${user.uid}.correctAnswers`]: increment(isCorrect ? 1 : 0),
+            [`players.${user.uid}.answers`]: { ...currentAnswers, [questionIndex]: answer }
         });
     };
 

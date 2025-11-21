@@ -88,6 +88,11 @@ export default function Home() {
           {user ? (
             <div className="flex items-center gap-4">
               <span className="text-gray-400 text-sm hidden md:inline">Welcome, {user.displayName}</span>
+              <Link href="/profile">
+                <Button variant="ghost" size="sm">
+                  Profile
+                </Button>
+              </Link>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Logout
               </Button>
