@@ -66,11 +66,50 @@ export function useSoundEffects() {
         });
     };
 
+
+
+    const playEmoteSound = (emoji) => {
+        if (isMuted) return;
+        let url = "";
+        switch (emoji) {
+            case '👏':
+                url = "https://cdn.pixabay.com/audio/2024/12/03/audio_9e91828e1f.mp3"; // Clapping
+                break;
+            case '😂':
+                url = "https://cdn.pixabay.com/audio/2024/04/30/audio_07ef5e30d8.mp3"; // Laugh
+                break;
+            case '😱':
+                url = "https://cdn.pixabay.com/audio/2025/10/21/audio_dfe3997459.mp3"; // Gasp/Shock
+                break;
+            case '🤯':
+                url = "/audio/mind.mp3"; // Pop
+                break;
+            case '🎉':
+                url = "https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3"; // Party (same as victory for now)
+                break;
+            default:
+                return;
+        }
+
+        if (url) {
+            const audio = new Audio(url);
+            audio.volume = 0.3;
+            audio.play().catch(e => console.log("Audio play failed:", e));
+
+            // Stop after 2 seconds
+            setTimeout(() => {
+                audio.pause();
+                audio.currentTime = 0;
+            }, 3000);
+        }
+    };
+
     return {
         playCorrect,
         playWrong,
         playTick,
         playVictory,
+        playEmoteSound,
         toggleBackgroundMusic,
         toggleMute,
         isMuted

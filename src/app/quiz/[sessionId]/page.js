@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useGameSession } from "@/hooks/useGameSession";
 import { useAuth } from "@/context/AuthContext";
@@ -11,13 +11,36 @@ import { Card } from "@/components/ui/Card";
 import { clsx } from "clsx";
 import confetti from "canvas-confetti";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGameEmotes } from "@/hooks/useGameEmotes";
+import { ReactionOverlay } from "@/components/ReactionOverlay";
 
 export default function QuizPage() {
     const { sessionId } = useParams();
     const { session, quiz, loading, error, startGame, submitAnswer, nextQuestion, user } = useGameSession(sessionId);
     const { login } = useAuth();
     const router = useRouter();
-    const { playCorrect, playWrong, playTick, playVictory, toggleBackgroundMusic, toggleMute, isMuted } = useSoundEffects();
+    const { playCorrect, playWrong, playTick, playVictory, playEmoteSound, toggleBackgroundMusic, toggleMute, isMuted } = useSoundEffects();
+    const { emotes, sendEmote } = useGameEmotes(sessionId, user);
+    const lastPlayedEmoteIdRef = useRef(null);
+
+    // Play sound when a new emote arrives
+    useEffect(() => {
+        if (emotes.length > 0) {
+            const latestEmote = emotes[emotes.length - 1];
+
+            // Skip if we already played sound for this emote
+            if (lastPlayedEmoteIdRef.current === latestEmote.id) return;
+
+            // Only play if it's recent (within last 2 seconds)
+            const now = Date.now();
+            const emoteTime = latestEmote.timestamp?.toMillis ? latestEmote.timestamp.toMillis() : now;
+
+            if (now - emoteTime < 2000) {
+                playEmoteSound(latestEmote.emoji);
+                lastPlayedEmoteIdRef.current = latestEmote.id;
+            }
+        }
+    }, [emotes, playEmoteSound]);
 
     // Manage Background Music based on session status
     useEffect(() => {
@@ -59,6 +82,8 @@ export default function QuizPage() {
                 {isMuted ? "🔇" : "🔊"}
             </button>
 
+            <ReactionOverlay emotes={emotes} />
+
             <AnimatePresence mode="wait">
                 {session.status === "waiting" && (
                     <LobbyView key="lobby" session={session} quiz={quiz} startGame={startGame} user={user} />
@@ -72,6 +97,7 @@ export default function QuizPage() {
                         nextQuestion={nextQuestion}
                         user={user}
                         sounds={{ playCorrect, playWrong, playTick }}
+                        sendEmote={sendEmote}
                     />
                 )}
                 {session.status === "completed" && (
@@ -149,12 +175,13 @@ function LobbyView({ session, quiz, startGame, user }) {
     );
 }
 
-function GameView({ session, quiz, submitAnswer, nextQuestion, user, sounds }) {
+function GameView({ session, quiz, submitAnswer, nextQuestion, user, sounds, sendEmote }) {
     const question = quiz.questions[session.currentQuestionIndex];
     const [timeLeft, setTimeLeft] = useState(30);
     const [selectedOption, setSelectedOption] = useState(null);
     const [isAnswered, setIsAnswered] = useState(false);
     const [shake, setShake] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const isHost = session.hostId === user?.uid;
     const { playCorrect, playWrong, playTick } = sounds;
 
@@ -331,6 +358,43 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user, sounds }) {
                     </div>
                 </motion.div>
             </Card>
+
+            {/* Reaction Bar */}
+            <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
+                <AnimatePresence>
+                    {isExpanded && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                            className="flex flex-col gap-2 mb-2"
+                        >
+                            {['👏', '😂', '😱', '🤯', '🎉'].map(emoji => (
+                                <button
+                                    key={emoji}
+                                    onClick={() => {
+                                        sendEmote(emoji);
+                                        setIsExpanded(false);
+                                    }}
+                                    className="w-12 h-12 flex items-center justify-center text-2xl bg-black/60 backdrop-blur-md rounded-full border border-white/10 shadow-xl hover:scale-110 transition-transform active:scale-90"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className={clsx(
+                        "w-14 h-14 flex items-center justify-center text-2xl bg-primary text-white rounded-full shadow-2xl hover:scale-105 transition-transform active:scale-95 border-2 border-white/20",
+                        isExpanded ? "rotate-45 bg-red-500" : ""
+                    )}
+                >
+                    {isExpanded ? "✕" : "😊"}
+                </button>
+            </div>
         </motion.div>
     );
 }
