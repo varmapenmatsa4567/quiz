@@ -2,22 +2,29 @@
 
 :root {
   /* Premium Dark Theme Palette */
-  --background: #0f172a; /* Slate 900 */
-  --foreground: #f8fafc; /* Slate 50 */
-  
-  --primary: #8b5cf6; /* Violet 500 */
+  --background: #0f172a;
+  /* Slate 900 */
+  --foreground: #f8fafc;
+  /* Slate 50 */
+
+  --primary: #8b5cf6;
+  /* Violet 500 */
   --primary-foreground: #ffffff;
-  
-  --secondary: #ec4899; /* Pink 500 */
+
+  --secondary: #ec4899;
+  /* Pink 500 */
   --secondary-foreground: #ffffff;
-  
-  --accent: #06b6d4; /* Cyan 500 */
+
+  --accent: #06b6d4;
+  /* Cyan 500 */
   --accent-foreground: #ffffff;
 
-  --card: #1e293b; /* Slate 800 */
+  --card: #1e293b;
+  /* Slate 800 */
   --card-foreground: #f8fafc;
 
-  --input: #334155; /* Slate 700 */
+  --input: #334155;
+  /* Slate 700 */
   --border: #334155;
 }
 
@@ -34,6 +41,18 @@
   --color-card-foreground: var(--card-foreground);
   --color-input: var(--input);
   --color-border: var(--border);
+}
+
+html {
+  font-size: 80%;
+  /* Smaller base size for mobile */
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 95%;
+    /* Larger for desktop */
+  }
 }
 
 body {
@@ -54,7 +73,8 @@ body {
 
 .glass-hover:hover {
   background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(139, 92, 246, 0.5); /* Primary color border on hover */
+  border-color: rgba(139, 92, 246, 0.5);
+  /* Primary color border on hover */
 }
 
 /* Custom Scrollbar */

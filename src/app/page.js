@@ -93,6 +93,11 @@ export default function Home() {
                   Profile
                 </Button>
               </Link>
+              <Link href="/leaderboard">
+                <Button variant="ghost" size="sm">
+                  🏆 Leaders
+                </Button>
+              </Link>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Logout
               </Button>
@@ -116,7 +121,7 @@ export default function Home() {
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent"
+            className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent"
           >
             Challenge Your Friends
           </motion.h2>

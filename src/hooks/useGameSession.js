@@ -75,6 +75,8 @@ export function useGameSession(sessionId) {
 
                 const userRef = doc(db, "users", user.uid);
                 await updateDoc(userRef, {
+                    totalScore: increment(playerStats.score),
+                    totalGames: increment(1),
                     history: arrayUnion({
                         sessionId: session.id,
                         quizId: session.quizId,
