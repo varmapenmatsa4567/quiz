@@ -216,7 +216,7 @@ function GameView({ session, quiz, submitAnswer, nextQuestion, user }) {
                             if (index % 2 === 1) {
                                 // Code block
                                 return (
-                                    <pre key={index} className="bg-black/50 p-4 rounded-lg my-4 overflow-x-auto whitespace-pre-wrap break-words text-sm font-mono border border-white/10 shadow-inner">
+                                    <pre key={index} className="bg-black/50 p-4 rounded-lg my-4 overflow-x-auto whitespace-pre break-words text-sm font-mono border border-white/10 shadow-inner">
                                         <code>{part.trim()}</code>
                                     </pre>
                                 );
