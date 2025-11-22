@@ -6,8 +6,9 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
+import { Slider } from "@/components/ui/Slider";
 import Link from "next/link";
 
 export default function CreateQuiz() {
@@ -76,8 +77,7 @@ export default function CreateQuiz() {
                     <form onSubmit={handleCreate} className="space-y-6">
                         <div>
                             <label className="block text-sm font-bold text-gray-300 mb-2">Topic</label>
-                            <Input
-                                type="text"
+                            <Textarea
                                 value={topic}
                                 onChange={(e) => setTopic(e.target.value)}
                                 placeholder="e.g. Solar System, 90s Music, ReactJS"
@@ -87,21 +87,22 @@ export default function CreateQuiz() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-gray-300 mb-2">Number of Questions</label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {[5, 10, 15].map((num) => (
-                                    <button
-                                        key={num}
-                                        type="button"
-                                        onClick={() => setCount(num)}
-                                        className={`py-2 rounded-lg font-medium transition-all ${count == num
-                                                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                                                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                                            }`}
-                                    >
-                                        {num} Qs
-                                    </button>
-                                ))}
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="block text-sm font-bold text-gray-300">Number of Questions</label>
+                                <span className="text-primary font-bold text-lg">{count}</span>
+                            </div>
+                            <div className="px-2">
+                                <Slider
+                                    min={5}
+                                    max={50}
+                                    step={1}
+                                    value={count}
+                                    onChange={(e) => setCount(Number(e.target.value))}
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 mt-2 font-medium">
+                                    <span>5</span>
+                                    <span>50</span>
+                                </div>
                             </div>
                         </div>
 
